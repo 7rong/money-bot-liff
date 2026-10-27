@@ -48,15 +48,21 @@
     #submit-btn:disabled { background: #c8d6e5; box-shadow: none; cursor: default; }
 
     .loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
-    .tag { display: inline-block; background: #f0f4f8; border-radius: 20px; padding: 2px 10px; font-size: 13px; color: #555; margin-right: 4px; margin-top: 4px; }
+    .input-row { display: flex; gap: 8px; }
+    .input-field {
+      flex: 1; padding: 11px 12px; border: 2px solid #e8e8e8; border-radius: 10px;
+      font-size: 15px; outline: none; transition: border-color 0.15s;
+    }
+    .input-field:focus { border-color: #4C9BE8; }
+    .input-field.amount { max-width: 110px; flex: none; }
   </style>
 </head>
 <body>
   <div id="app"><div class="loading">載入中...</div></div>
 
   <script>
-    const GAS_URL = 'YOUR_GAS_URL_HERE'; // ← 部署後替換成你的 Apps Script 網址
-    const LIFF_ID = 'YOUR_LIFF_ID_HERE'; // ← 註冊 LIFF 後替換
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwhuuHNjd0-AyeF8M0N7PwZmZl7y6ly0dWPk_Z5csmvM7SPCsMmGVwkEvZDHZh_Oh_sgA/exec';
+    const LIFF_ID = '2012247428-2huI1YIE';
 
     let params = {};
     let members = [];
@@ -73,14 +79,31 @@
       const data = await res.json();
       members = data.members || [];
       render();
+
+      // 輸入框即時驗證
+      const amountEl = document.getElementById('input-amount');
+      const itemEl = document.getElementById('input-item');
+      if (amountEl) amountEl.addEventListener('input', checkReady);
+      if (itemEl) itemEl.addEventListener('input', checkReady);
     }
 
     function render() {
+      const hasAmount = params.amount && params.item;
       document.getElementById('app').innerHTML = `
         <div class="header">
           <h2>💳 記帳</h2>
-          <p>${params.item} &nbsp;·&nbsp; ${params.amount} 元</p>
+          <p>${hasAmount ? `${params.item} · ${params.amount} 元` : '請填寫金額與項目'}</p>
         </div>
+
+        ${!hasAmount ? `
+        <div class="section">
+          <h3>金額與項目</h3>
+          <div class="input-row">
+            <input class="input-field amount" id="input-amount" type="number" placeholder="金額" inputmode="numeric" value="${params.amount || ''}">
+            <input class="input-field" id="input-item" type="text" placeholder="項目（例：晚餐）" value="${params.item || ''}">
+          </div>
+        </div>
+        ` : ''}
 
         <div class="section">
           <h3>誰付錢</h3>
@@ -136,7 +159,12 @@
     }
 
     function checkReady() {
-      const ok = selectedPayer && (splitMode === 'all' || selectedSplitters.size > 0);
+      const amountEl = document.getElementById('input-amount');
+      const itemEl = document.getElementById('input-item');
+      const hasInputs = params.amount && params.item
+        ? true
+        : amountEl && itemEl && parseFloat(amountEl.value) > 0 && itemEl.value.trim();
+      const ok = hasInputs && selectedPayer && (splitMode === 'all' || selectedSplitters.size > 0);
       document.getElementById('submit-btn').disabled = !ok;
     }
 
@@ -148,13 +176,16 @@
       const splitters = splitMode === 'all' ? members : Array.from(selectedSplitters);
       const profile = await liff.getProfile();
 
+      const finalAmount = params.amount || document.getElementById('input-amount').value;
+      const finalItem = params.item || document.getElementById('input-item').value.trim();
+
       const qs = new URLSearchParams({
         action: 'addExpense',
         actId: params.actId,
         groupId: params.groupId,
         payer: selectedPayer,
-        item: params.item,
-        amount: params.amount,
+        item: finalItem,
+        amount: finalAmount,
         splitters: splitters.join(','),
         splitMethod: splitMode === 'all' ? '均分' : '自訂',
         userId: profile.userId,
