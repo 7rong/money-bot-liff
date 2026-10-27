@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>記帳</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f4f8; min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, #4C9BE8, #2D7DD2);
+      color: white; padding: 20px 16px;
+    }
+    .header h2 { font-size: 20px; font-weight: 700; }
+    .header p { font-size: 14px; opacity: 0.85; margin-top: 6px; }
+
+    .section {
+      background: white; margin: 12px; border-radius: 14px;
+      padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .section h3 { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+    .member-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .member-btn {
+      padding: 12px 4px; border: 2px solid #e8e8e8; border-radius: 10px;
+      background: white; font-size: 14px; cursor: pointer; text-align: center;
+      transition: all 0.15s; color: #333;
+    }
+    .member-btn:active { transform: scale(0.96); }
+    .member-btn.payer-on { border-color: #4C9BE8; background: #4C9BE8; color: white; font-weight: 600; }
+    .member-btn.splitter-on { border-color: #4C9BE8; background: #EBF4FF; color: #2D7DD2; font-weight: 600; }
+
+    .split-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .split-btn {
+      flex: 1; padding: 11px; border: 2px solid #e8e8e8; border-radius: 10px;
+      background: white; font-size: 14px; cursor: pointer; color: #333; transition: all 0.15s;
+    }
+    .split-btn.on { border-color: #4C9BE8; background: #EBF4FF; color: #2D7DD2; font-weight: 600; }
+
+    #submit-btn {
+      display: block; width: calc(100% - 24px); margin: 12px auto 24px;
+      padding: 16px; background: #4C9BE8; color: white; border: none;
+      border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer;
+      transition: opacity 0.2s; box-shadow: 0 4px 12px rgba(76,155,232,0.35);
+    }
+    #submit-btn:disabled { background: #c8d6e5; box-shadow: none; cursor: default; }
+
+    .loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
+    .tag { display: inline-block; background: #f0f4f8; border-radius: 20px; padding: 2px 10px; font-size: 13px; color: #555; margin-right: 4px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div id="app"><div class="loading">載入中...</div></div>
+
+  <script>
+    const GAS_URL = 'YOUR_GAS_URL_HERE'; // ← 部署後替換成你的 Apps Script 網址
+    const LIFF_ID = 'YOUR_LIFF_ID_HERE'; // ← 註冊 LIFF 後替換
+
+    let params = {};
+    let members = [];
+    let selectedPayer = null;
+    let selectedSplitters = new Set();
+    let splitMode = 'all';
+
+    async function init() {
+      await liff.init({ liffId: LIFF_ID });
+      const p = new URLSearchParams(location.search);
+      params = { actId: p.get('actId'), groupId: p.get('groupId'), amount: p.get('amount'), item: p.get('item') };
+
+      const res = await fetch(`${GAS_URL}?action=getMembers&actId=${params.actId}`);
+      const data = await res.json();
+      members = data.members || [];
+      render();
+    }
+
+    function render() {
+      document.getElementById('app').innerHTML = `
+        <div class="header">
+          <h2>💳 記帳</h2>
+          <p>${params.item} &nbsp;·&nbsp; ${params.amount} 元</p>
+        </div>
+
+        <div class="section">
+          <h3>誰付錢</h3>
+          <div class="member-grid">
+            ${members.map(m => `<button class="member-btn" id="p-${m}" onclick="pickPayer('${m}')">${m}</button>`).join('')}
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>分攤方式</h3>
+          <div class="split-row">
+            <button class="split-btn on" id="btn-all" onclick="setSplit('all')">均分所有人</button>
+            <button class="split-btn" id="btn-custom" onclick="setSplit('custom')">自訂</button>
+          </div>
+          <div id="custom-area" style="display:none">
+            <div class="member-grid">
+              ${members.map(m => `<button class="member-btn" id="s-${m}" onclick="toggleSplitter('${m}')">${m}</button>`).join('')}
+            </div>
+          </div>
+        </div>
+
+        <button id="submit-btn" disabled onclick="submit()">確認記帳</button>
+      `;
+    }
+
+    function pickPayer(name) {
+      selectedPayer = name;
+      members.forEach(m => document.getElementById('p-' + m).className = 'member-btn' + (m === name ? ' payer-on' : ''));
+      checkReady();
+    }
+
+    function setSplit(mode) {
+      splitMode = mode;
+      document.getElementById('btn-all').className = 'split-btn' + (mode === 'all' ? ' on' : '');
+      document.getElementById('btn-custom').className = 'split-btn' + (mode === 'custom' ? ' on' : '');
+      document.getElementById('custom-area').style.display = mode === 'custom' ? 'block' : 'none';
+      if (mode === 'all') {
+        selectedSplitters.clear();
+        members.forEach(m => { if (document.getElementById('s-' + m)) document.getElementById('s-' + m).className = 'member-btn'; });
+      }
+      checkReady();
+    }
+
+    function toggleSplitter(name) {
+      if (selectedSplitters.has(name)) {
+        selectedSplitters.delete(name);
+        document.getElementById('s-' + name).className = 'member-btn';
+      } else {
+        selectedSplitters.add(name);
+        document.getElementById('s-' + name).className = 'member-btn splitter-on';
+      }
+      checkReady();
+    }
+
+    function checkReady() {
+      const ok = selectedPayer && (splitMode === 'all' || selectedSplitters.size > 0);
+      document.getElementById('submit-btn').disabled = !ok;
+    }
+
+    async function submit() {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = '送出中...';
+
+      const splitters = splitMode === 'all' ? members : Array.from(selectedSplitters);
+      const profile = await liff.getProfile();
+
+      const qs = new URLSearchParams({
+        action: 'addExpense',
+        actId: params.actId,
+        groupId: params.groupId,
+        payer: selectedPayer,
+        item: params.item,
+        amount: params.amount,
+        splitters: splitters.join(','),
+        splitMethod: splitMode === 'all' ? '均分' : '自訂',
+        userId: profile.userId,
+        userName: profile.displayName
+      });
+
+      await fetch(`${GAS_URL}?${qs.toString()}`);
+      liff.closeWindow();
+    }
+
+    init().catch(err => {
+      document.getElementById('app').innerHTML = `<div class="loading">載入失敗<br><small>${err.message}</small></div>`;
+    });
+  </script>
+</body>
+</html>
