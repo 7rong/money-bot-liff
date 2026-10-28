@@ -145,7 +145,7 @@
         </div>` : ''}
 
         <div class="section">
-          <h3>誰付錢</h3>
+          <h3>誰先墊付</h3>
           <div class="member-grid">
             ${members.map(m => `<button class="member-btn${selectedPayer === m ? ' payer-on' : ''}" onclick="pickPayer('${m}')">${m}</button>`).join('')}
           </div>
@@ -187,18 +187,28 @@
       checkReady();
     }
 
+    function saveInputs() {
+      const amountEl = document.getElementById('input-amount');
+      const itemEl = document.getElementById('input-item');
+      if (amountEl) params.amount = amountEl.value;
+      if (itemEl) params.item = itemEl.value;
+    }
+
     function pickPayer(name) {
+      saveInputs();
       selectedPayer = name;
       render();
     }
 
     function setSplit(mode) {
+      saveInputs();
       splitMode = mode;
       if (mode === 'all') { selectedSplitters.clear(); splitConfig = {}; }
       render();
     }
 
     function toggleSplitter(name) {
+      saveInputs();
       if (selectedSplitters.has(name)) {
         selectedSplitters.delete(name);
         delete splitConfig[name];
