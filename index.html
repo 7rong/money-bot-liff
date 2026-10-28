@@ -62,12 +62,13 @@
     let selectedPayer = null;
     let selectedSplitters = new Set();
     let splitMode = 'all';
-    let splitConfig = {}; // { name: amount }
+    let splitConfig = {};
 
     async function init() {
       await liff.init({ liffId: LIFF_ID });
       const p = new URLSearchParams(location.search);
       params = { actId: p.get('actId'), groupId: p.get('groupId'), amount: p.get('amount'), item: p.get('item') };
+
       const res = await fetch(`${GAS_URL}?action=getMembers&actId=${params.actId}`);
       const data = await res.json();
       members = data.members || [];
@@ -128,21 +129,19 @@
     }
 
     function render() {
-      const hasAmount = params.amount && params.item;
       document.getElementById('app').innerHTML = `
         <div class="header">
           <h2>💳 記帳</h2>
-          <p>${hasAmount ? `${params.item} · ${params.amount} 元` : '請填寫金額與項目'}</p>
+          <p>請填寫金額與項目</p>
         </div>
 
-        ${!hasAmount ? `
         <div class="section">
           <h3>金額與項目</h3>
           <div class="input-row">
             <input class="input-field amount" id="input-amount" type="number" placeholder="金額" inputmode="decimal" value="${params.amount || ''}" oninput="checkReady()">
             <input class="input-field" id="input-item" type="text" placeholder="項目（例：晚餐）" value="${params.item || ''}" oninput="checkReady()">
           </div>
-        </div>` : ''}
+        </div>
 
         <div class="section">
           <h3>誰先墊付</h3>
@@ -221,9 +220,7 @@
     function checkReady() {
       const amountEl = document.getElementById('input-amount');
       const itemEl = document.getElementById('input-item');
-      const hasInputs = (params.amount && params.item)
-        ? true
-        : amountEl && itemEl && parseFloat(amountEl.value) > 0 && itemEl.value.trim();
+      const hasInputs = amountEl && itemEl && parseFloat(amountEl.value) > 0 && itemEl.value.trim();
       const hasSplit = splitMode === 'all' || (selectedSplitters.size > 0 && isAllocOk());
       const ok = hasInputs && selectedPayer && hasSplit;
       const btn = document.getElementById('submit-btn');
@@ -236,8 +233,8 @@
       btn.textContent = '送出中...';
 
       const profile = await liff.getProfile();
-      const finalAmount = params.amount || document.getElementById('input-amount').value;
-      const finalItem = params.item || document.getElementById('input-item').value.trim();
+      const finalAmount = document.getElementById('input-amount').value;
+      const finalItem = document.getElementById('input-item').value.trim();
 
       let splittersParam, splitMethod;
       if (splitMode === 'all') {
