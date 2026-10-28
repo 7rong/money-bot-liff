@@ -9,52 +9,45 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f4f8; min-height: 100vh; }
 
-    .header {
-      background: linear-gradient(135deg, #4C9BE8, #2D7DD2);
-      color: white; padding: 20px 16px;
-    }
+    .header { background: linear-gradient(135deg, #4C9BE8, #2D7DD2); color: white; padding: 20px 16px; }
     .header h2 { font-size: 20px; font-weight: 700; }
     .header p { font-size: 14px; opacity: 0.85; margin-top: 6px; }
 
-    .section {
-      background: white; margin: 12px; border-radius: 14px;
-      padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    }
-    .section h3 { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+    .section { background: white; margin: 12px; border-radius: 14px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .section h3 { font-size: 13px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
 
     .member-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .member-btn {
-      padding: 12px 4px; border: 2px solid #e8e8e8; border-radius: 10px;
-      background: white; font-size: 14px; cursor: pointer; text-align: center;
-      transition: all 0.15s; color: #333;
-    }
-    .member-btn:active { transform: scale(0.96); }
+    .member-btn { padding: 12px 4px; border: 2px solid #e8e8e8; border-radius: 10px; background: white; font-size: 14px; cursor: pointer; text-align: center; transition: all 0.15s; color: #333; }
     .member-btn.payer-on { border-color: #4C9BE8; background: #4C9BE8; color: white; font-weight: 600; }
     .member-btn.splitter-on { border-color: #4C9BE8; background: #EBF4FF; color: #2D7DD2; font-weight: 600; }
 
     .split-row { display: flex; gap: 8px; margin-bottom: 12px; }
-    .split-btn {
-      flex: 1; padding: 11px; border: 2px solid #e8e8e8; border-radius: 10px;
-      background: white; font-size: 14px; cursor: pointer; color: #333; transition: all 0.15s;
-    }
+    .split-btn { flex: 1; padding: 11px; border: 2px solid #e8e8e8; border-radius: 10px; background: white; font-size: 14px; cursor: pointer; color: #333; transition: all 0.15s; }
     .split-btn.on { border-color: #4C9BE8; background: #EBF4FF; color: #2D7DD2; font-weight: 600; }
 
-    #submit-btn {
-      display: block; width: calc(100% - 24px); margin: 12px auto 24px;
-      padding: 16px; background: #4C9BE8; color: white; border: none;
-      border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer;
-      transition: opacity 0.2s; box-shadow: 0 4px 12px rgba(76,155,232,0.35);
-    }
+    .alloc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+    .alloc-total { font-size: 13px; font-weight: 600; }
+    .alloc-total.ok { color: #27ae60; }
+    .alloc-total.err { color: #e74c3c; }
+    .avg-btn { padding: 5px 12px; border: 1.5px solid #4C9BE8; border-radius: 8px; background: white; color: #4C9BE8; font-size: 12px; cursor: pointer; }
+
+    .alloc-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .alloc-name { flex: 0 0 52px; font-size: 14px; color: #333; }
+    .alloc-input { flex: 1; padding: 9px 10px; border: 2px solid #e8e8e8; border-radius: 9px; font-size: 15px; outline: none; transition: border-color 0.15s; }
+    .alloc-input:focus { border-color: #4C9BE8; }
+    .alloc-input.filled { border-color: #4C9BE8; }
+    .alloc-unit { font-size: 13px; color: #999; }
+
+    .input-row { display: flex; gap: 8px; }
+    .input-field { flex: 1; padding: 11px 12px; border: 2px solid #e8e8e8; border-radius: 10px; font-size: 15px; outline: none; transition: border-color 0.15s; }
+    .input-field:focus { border-color: #4C9BE8; }
+    .input-field.amount { max-width: 110px; flex: none; }
+
+    #submit-btn { display: block; width: calc(100% - 24px); margin: 12px auto 24px; padding: 16px; background: #4C9BE8; color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(76,155,232,0.35); }
     #submit-btn:disabled { background: #c8d6e5; box-shadow: none; cursor: default; }
 
     .loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
-    .input-row { display: flex; gap: 8px; }
-    .input-field {
-      flex: 1; padding: 11px 12px; border: 2px solid #e8e8e8; border-radius: 10px;
-      font-size: 15px; outline: none; transition: border-color 0.15s;
-    }
-    .input-field:focus { border-color: #4C9BE8; }
-    .input-field.amount { max-width: 110px; flex: none; }
+    .divider { height: 1px; background: #f0f0f0; margin: 12px 0; }
   </style>
 </head>
 <body>
@@ -69,22 +62,69 @@
     let selectedPayer = null;
     let selectedSplitters = new Set();
     let splitMode = 'all';
+    let splitConfig = {}; // { name: amount }
 
     async function init() {
       await liff.init({ liffId: LIFF_ID });
       const p = new URLSearchParams(location.search);
       params = { actId: p.get('actId'), groupId: p.get('groupId'), amount: p.get('amount'), item: p.get('item') };
-
       const res = await fetch(`${GAS_URL}?action=getMembers&actId=${params.actId}`);
       const data = await res.json();
       members = data.members || [];
       render();
+    }
 
-      // 輸入框即時驗證
-      const amountEl = document.getElementById('input-amount');
-      const itemEl = document.getElementById('input-item');
-      if (amountEl) amountEl.addEventListener('input', checkReady);
-      if (itemEl) itemEl.addEventListener('input', checkReady);
+    function getTotalAmount() {
+      const el = document.getElementById('input-amount');
+      return parseFloat(params.amount || (el && el.value) || 0);
+    }
+
+    function getAllocated() {
+      return Array.from(selectedSplitters).reduce((s, n) => s + (parseFloat(splitConfig[n]) || 0), 0);
+    }
+
+    function isAllocOk() {
+      if (splitMode !== 'custom' || selectedSplitters.size === 0) return true;
+      const total = getTotalAmount();
+      const allFilled = Array.from(selectedSplitters).every(n => parseFloat(splitConfig[n]) > 0);
+      return allFilled && Math.abs(getAllocated() - total) < 0.1;
+    }
+
+    function autoEqual() {
+      const total = getTotalAmount();
+      if (!total || selectedSplitters.size === 0) return;
+      const count = selectedSplitters.size;
+      const base = Math.floor(total / count * 10) / 10;
+      const splitters = Array.from(selectedSplitters);
+      splitters.forEach((name, i) => {
+        const amt = i === count - 1
+          ? Math.round((total - base * (count - 1)) * 10) / 10
+          : base;
+        splitConfig[name] = amt;
+        const el = document.getElementById('amt-' + name);
+        if (el) { el.value = amt; el.className = 'alloc-input filled'; }
+      });
+      updateAllocDisplay();
+      checkReady();
+    }
+
+    function setAmount(name, value) {
+      splitConfig[name] = parseFloat(value) || 0;
+      const el = document.getElementById('amt-' + name);
+      if (el) el.className = 'alloc-input' + (splitConfig[name] > 0 ? ' filled' : '');
+      updateAllocDisplay();
+      checkReady();
+    }
+
+    function updateAllocDisplay() {
+      const total = getTotalAmount();
+      const allocated = getAllocated();
+      const ok = Math.abs(allocated - total) < 0.1 && Array.from(selectedSplitters).every(n => parseFloat(splitConfig[n]) > 0);
+      const el = document.getElementById('alloc-total');
+      if (el) {
+        el.textContent = `${allocated} / ${total} 元`;
+        el.className = 'alloc-total ' + (ok ? 'ok' : 'err');
+      }
     }
 
     function render() {
@@ -99,73 +139,85 @@
         <div class="section">
           <h3>金額與項目</h3>
           <div class="input-row">
-            <input class="input-field amount" id="input-amount" type="number" placeholder="金額" inputmode="numeric" value="${params.amount || ''}">
-            <input class="input-field" id="input-item" type="text" placeholder="項目（例：晚餐）" value="${params.item || ''}">
+            <input class="input-field amount" id="input-amount" type="number" placeholder="金額" inputmode="decimal" value="${params.amount || ''}" oninput="checkReady()">
+            <input class="input-field" id="input-item" type="text" placeholder="項目（例：晚餐）" value="${params.item || ''}" oninput="checkReady()">
           </div>
-        </div>
-        ` : ''}
+        </div>` : ''}
 
         <div class="section">
           <h3>誰付錢</h3>
           <div class="member-grid">
-            ${members.map(m => `<button class="member-btn" id="p-${m}" onclick="pickPayer('${m}')">${m}</button>`).join('')}
+            ${members.map(m => `<button class="member-btn${selectedPayer === m ? ' payer-on' : ''}" onclick="pickPayer('${m}')">${m}</button>`).join('')}
           </div>
         </div>
 
         <div class="section">
           <h3>分攤方式</h3>
           <div class="split-row">
-            <button class="split-btn on" id="btn-all" onclick="setSplit('all')">均分所有人</button>
-            <button class="split-btn" id="btn-custom" onclick="setSplit('custom')">自訂</button>
+            <button class="split-btn${splitMode === 'all' ? ' on' : ''}" onclick="setSplit('all')">均分所有人</button>
+            <button class="split-btn${splitMode === 'custom' ? ' on' : ''}" onclick="setSplit('custom')">自訂</button>
           </div>
-          <div id="custom-area" style="display:none">
-            <div class="member-grid">
-              ${members.map(m => `<button class="member-btn" id="s-${m}" onclick="toggleSplitter('${m}')">${m}</button>`).join('')}
-            </div>
+
+          ${splitMode === 'custom' ? `
+          <div class="member-grid" style="margin-bottom:${selectedSplitters.size > 0 ? '14px' : '0'}">
+            ${members.map(m => `<button class="member-btn${selectedSplitters.has(m) ? ' splitter-on' : ''}" onclick="toggleSplitter('${m}')">${m}</button>`).join('')}
           </div>
+
+          ${selectedSplitters.size > 0 ? `
+          <div class="divider"></div>
+          <div class="alloc-header">
+            <span class="alloc-total err" id="alloc-total">0 / ${params.amount || '?'} 元</span>
+            <button class="avg-btn" onclick="autoEqual()">平均分配</button>
+          </div>
+          ${Array.from(selectedSplitters).map(name => `
+          <div class="alloc-row">
+            <span class="alloc-name">${name}</span>
+            <input class="alloc-input${splitConfig[name] > 0 ? ' filled' : ''}" id="amt-${name}"
+                   type="number" inputmode="decimal" placeholder="金額"
+                   value="${splitConfig[name] || ''}"
+                   oninput="setAmount('${name}', this.value)">
+            <span class="alloc-unit">元</span>
+          </div>`).join('')}
+          ` : ''}
+          ` : ''}
         </div>
 
-        <button id="submit-btn" disabled onclick="submit()">確認記帳</button>
+        <button id="submit-btn" onclick="submit()" disabled>確認記帳</button>
       `;
+      checkReady();
     }
 
     function pickPayer(name) {
       selectedPayer = name;
-      members.forEach(m => document.getElementById('p-' + m).className = 'member-btn' + (m === name ? ' payer-on' : ''));
-      checkReady();
+      render();
     }
 
     function setSplit(mode) {
       splitMode = mode;
-      document.getElementById('btn-all').className = 'split-btn' + (mode === 'all' ? ' on' : '');
-      document.getElementById('btn-custom').className = 'split-btn' + (mode === 'custom' ? ' on' : '');
-      document.getElementById('custom-area').style.display = mode === 'custom' ? 'block' : 'none';
-      if (mode === 'all') {
-        selectedSplitters.clear();
-        members.forEach(m => { if (document.getElementById('s-' + m)) document.getElementById('s-' + m).className = 'member-btn'; });
-      }
-      checkReady();
+      if (mode === 'all') { selectedSplitters.clear(); splitConfig = {}; }
+      render();
     }
 
     function toggleSplitter(name) {
       if (selectedSplitters.has(name)) {
         selectedSplitters.delete(name);
-        document.getElementById('s-' + name).className = 'member-btn';
+        delete splitConfig[name];
       } else {
         selectedSplitters.add(name);
-        document.getElementById('s-' + name).className = 'member-btn splitter-on';
       }
-      checkReady();
+      render();
     }
 
     function checkReady() {
       const amountEl = document.getElementById('input-amount');
       const itemEl = document.getElementById('input-item');
-      const hasInputs = params.amount && params.item
+      const hasInputs = (params.amount && params.item)
         ? true
         : amountEl && itemEl && parseFloat(amountEl.value) > 0 && itemEl.value.trim();
-      const ok = hasInputs && selectedPayer && (splitMode === 'all' || selectedSplitters.size > 0);
-      document.getElementById('submit-btn').disabled = !ok;
+      const hasSplit = splitMode === 'all' || (selectedSplitters.size > 0 && isAllocOk());
+      const ok = hasInputs && selectedPayer && hasSplit;
+      const btn = document.getElementById('submit-btn');
+      if (btn) btn.disabled = !ok;
     }
 
     async function submit() {
@@ -173,11 +225,19 @@
       btn.disabled = true;
       btn.textContent = '送出中...';
 
-      const splitters = splitMode === 'all' ? members : Array.from(selectedSplitters);
       const profile = await liff.getProfile();
-
       const finalAmount = params.amount || document.getElementById('input-amount').value;
       const finalItem = params.item || document.getElementById('input-item').value.trim();
+
+      let splittersParam, splitMethod;
+      if (splitMode === 'all') {
+        splittersParam = members.join(',');
+        splitMethod = '均分';
+      } else {
+        // 自訂：以 name:amount 格式送出
+        splittersParam = Array.from(selectedSplitters).map(n => `${n}:${splitConfig[n]}`).join(',');
+        splitMethod = '自訂金額';
+      }
 
       const qs = new URLSearchParams({
         action: 'addExpense',
@@ -186,8 +246,8 @@
         payer: selectedPayer,
         item: finalItem,
         amount: finalAmount,
-        splitters: splitters.join(','),
-        splitMethod: splitMode === 'all' ? '均分' : '自訂',
+        splitters: splittersParam,
+        splitMethod: splitMethod,
         userId: profile.userId,
         userName: profile.displayName
       });
