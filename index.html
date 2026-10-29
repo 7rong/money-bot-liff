@@ -48,6 +48,10 @@
 
     .loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
     .divider { height: 1px; background: #f0f0f0; margin: 12px 0; }
+    .back-btn { display: inline-block; margin: 12px 16px 0; color: #4C9BE8; font-size: 14px; cursor: pointer; background: none; border: none; padding: 0; }
+    .edit-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .btn-edit { flex: 1; padding: 7px; border: 1.5px solid #4C9BE8; border-radius: 8px; background: white; color: #4C9BE8; font-size: 13px; cursor: pointer; }
+    .btn-delete { flex: 1; padding: 7px; border: 1.5px solid #e74c3c; border-radius: 8px; background: white; color: #e74c3c; font-size: 13px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -63,6 +67,8 @@
     let selectedSplitters = new Set();
     let splitMode = 'all';
     let splitConfig = {};
+    let expenses = [];
+    let editingExpense = null;
 
     async function init() {
       await liff.init({ liffId: LIFF_ID });
@@ -73,6 +79,14 @@
         const res = await fetch(`${GAS_URL}?action=getExpenses&actId=${params.actId}`);
         const data = await res.json();
         renderRecords(data.expenses || []);
+      } else if (params.mode === 'edit-records') {
+        const [expRes, memRes] = await Promise.all([
+          fetch(`${GAS_URL}?action=getExpenses&actId=${params.actId}`),
+          fetch(`${GAS_URL}?action=getMembers&actId=${params.actId}`)
+        ]);
+        expenses = (await expRes.json()).expenses || [];
+        members = (await memRes.json()).members || [];
+        renderEditList();
       } else {
         const res = await fetch(`${GAS_URL}?action=getMembers&actId=${params.actId}`);
         const data = await res.json();
@@ -107,6 +121,77 @@
         <div class="header"><h2>📋 記帳明細</h2><p>共 ${expenses.length} 筆，總計 $${total}</p></div>
         <div class="section" style="padding-bottom:4px">${rows}</div>
         <div style="height:24px"></div>`;
+    }
+
+    function renderEditList() {
+      if (expenses.length === 0) {
+        document.getElementById('app').innerHTML = `
+          <div class="header"><h2>✏️ 編輯記帳</h2><p>目前還沒有任何記帳記錄</p></div>`;
+        return;
+      }
+      const total = expenses.reduce((s, e) => s + e.amount, 0);
+      const rows = expenses.map((e, idx) => {
+        const splitterText = e.splitters.some(s => s.includes(':'))
+          ? e.splitters.map(s => { const [n, a] = s.split(':'); return `${n} $${a}`; }).join('、')
+          : e.splitters.join('、');
+        return `
+          <div style="padding:12px 0;border-bottom:1px solid #f0f0f0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:15px;font-weight:600;color:#333">${e.item}</span>
+              <span style="font-size:16px;font-weight:700;color:#4C9BE8">$${e.amount}</span>
+            </div>
+            <div style="font-size:13px;color:#888">墊付：${e.payer}　分攤：${splitterText}</div>
+            <div style="font-size:12px;color:#bbb;margin-top:2px">${e.date}</div>
+            <div class="edit-actions">
+              <button class="btn-edit" onclick="startEdit(${idx})">編輯</button>
+              <button class="btn-delete" onclick="deleteRecord(${e.rowIndex})">刪除</button>
+            </div>
+          </div>`;
+      }).join('');
+      document.getElementById('app').innerHTML = `
+        <div class="header"><h2>✏️ 編輯記帳</h2><p>共 ${expenses.length} 筆，總計 $${total}</p></div>
+        <div class="section" style="padding-bottom:4px">${rows}</div>
+        <div style="height:24px"></div>`;
+    }
+
+    function startEdit(idx) {
+      editingExpense = expenses[idx];
+      selectedPayer = editingExpense.payer;
+      params.amount = String(editingExpense.amount);
+      params.item = editingExpense.item;
+      if (editingExpense.splitMethod === '均分') {
+        splitMode = 'all';
+        selectedSplitters = new Set();
+        splitConfig = {};
+      } else {
+        splitMode = 'custom';
+        selectedSplitters = new Set(editingExpense.splitters.map(s => s.split(':')[0]));
+        splitConfig = {};
+        editingExpense.splitters.forEach(s => {
+          const [name, amt] = s.split(':');
+          if (amt) splitConfig[name] = parseFloat(amt);
+        });
+      }
+      render();
+    }
+
+    function backToList() {
+      editingExpense = null;
+      selectedPayer = null;
+      selectedSplitters = new Set();
+      splitConfig = {};
+      splitMode = 'all';
+      params.amount = '';
+      params.item = '';
+      renderEditList();
+    }
+
+    async function deleteRecord(rowIndex) {
+      if (!confirm('確定要刪除這筆記帳嗎？')) return;
+      await fetch(`${GAS_URL}?action=deleteExpense&rowIndex=${rowIndex}`);
+      const res = await fetch(`${GAS_URL}?action=getExpenses&actId=${params.actId}`);
+      expenses = (await res.json()).expenses || [];
+      renderEditList();
     }
 
     function getTotalAmount() {
@@ -165,9 +250,10 @@
     function render() {
       document.getElementById('app').innerHTML = `
         <div class="header">
-          <h2>💳 記帳</h2>
+          <h2>${editingExpense ? '✏️ 編輯記帳' : '💳 記帳'}</h2>
           <p>請填寫金額與項目</p>
         </div>
+        ${editingExpense ? `<button class="back-btn" onclick="backToList()">← 返回列表</button>` : ''}
 
         <div class="section">
           <h3>金額與項目</h3>
@@ -215,7 +301,7 @@
           ` : ''}
         </div>
 
-        <button id="submit-btn" onclick="submit()" disabled>確認記帳</button>
+        <button id="submit-btn" onclick="submit()" disabled>${editingExpense ? '更新記帳' : '確認記帳'}</button>
       `;
       checkReady();
     }
@@ -280,21 +366,46 @@
         splitMethod = '自訂金額';
       }
 
-      const qs = new URLSearchParams({
-        action: 'addExpense',
-        actId: params.actId,
-        groupId: params.groupId,
-        payer: selectedPayer,
-        item: finalItem,
-        amount: finalAmount,
-        splitters: splittersParam,
-        splitMethod: splitMethod,
-        userId: profile.userId,
-        userName: profile.displayName
-      });
-
-      await fetch(`${GAS_URL}?${qs.toString()}`);
-      liff.closeWindow();
+      if (editingExpense) {
+        const qs = new URLSearchParams({
+          action: 'updateExpense',
+          rowIndex: editingExpense.rowIndex,
+          actId: params.actId,
+          payer: selectedPayer,
+          item: finalItem,
+          amount: finalAmount,
+          splitters: splittersParam,
+          splitMethod: splitMethod,
+          userId: profile.userId,
+          userName: profile.displayName
+        });
+        await fetch(`${GAS_URL}?${qs.toString()}`);
+        const res = await fetch(`${GAS_URL}?action=getExpenses&actId=${params.actId}`);
+        expenses = (await res.json()).expenses || [];
+        editingExpense = null;
+        selectedPayer = null;
+        selectedSplitters = new Set();
+        splitConfig = {};
+        splitMode = 'all';
+        params.amount = '';
+        params.item = '';
+        renderEditList();
+      } else {
+        const qs = new URLSearchParams({
+          action: 'addExpense',
+          actId: params.actId,
+          groupId: params.groupId,
+          payer: selectedPayer,
+          item: finalItem,
+          amount: finalAmount,
+          splitters: splittersParam,
+          splitMethod: splitMethod,
+          userId: profile.userId,
+          userName: profile.displayName
+        });
+        await fetch(`${GAS_URL}?${qs.toString()}`);
+        liff.closeWindow();
+      }
     }
 
     init().catch(err => {
