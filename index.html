@@ -67,12 +67,46 @@
     async function init() {
       await liff.init({ liffId: LIFF_ID });
       const p = new URLSearchParams(location.search);
-      params = { actId: p.get('actId'), groupId: p.get('groupId'), amount: p.get('amount'), item: p.get('item') };
+      params = { actId: p.get('actId'), groupId: p.get('groupId'), amount: p.get('amount'), item: p.get('item'), mode: p.get('mode') };
 
-      const res = await fetch(`${GAS_URL}?action=getMembers&actId=${params.actId}`);
-      const data = await res.json();
-      members = data.members || [];
-      render();
+      if (params.mode === 'records') {
+        const res = await fetch(`${GAS_URL}?action=getExpenses&actId=${params.actId}`);
+        const data = await res.json();
+        renderRecords(data.expenses || []);
+      } else {
+        const res = await fetch(`${GAS_URL}?action=getMembers&actId=${params.actId}`);
+        const data = await res.json();
+        members = data.members || [];
+        render();
+      }
+    }
+
+    function renderRecords(expenses) {
+      if (expenses.length === 0) {
+        document.getElementById('app').innerHTML = `
+          <div class="header"><h2>📋 記帳明細</h2><p>目前還沒有任何記帳記錄</p></div>`;
+        return;
+      }
+      const total = expenses.reduce((s, e) => s + e.amount, 0);
+      const rows = expenses.map((e, i) => {
+        const splitterText = e.splitters.some(s => s.includes(':'))
+          ? e.splitters.map(s => { const [n, a] = s.split(':'); return `${n} $${a}`; }).join('、')
+          : e.splitters.join('、');
+        return `
+          <div style="padding:12px 0;border-bottom:1px solid #f0f0f0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:15px;font-weight:600;color:#333">${e.item}</span>
+              <span style="font-size:16px;font-weight:700;color:#4C9BE8">$${e.amount}</span>
+            </div>
+            <div style="font-size:13px;color:#888">墊付：${e.payer}　分攤：${splitterText}</div>
+            <div style="font-size:12px;color:#bbb;margin-top:2px">${e.date}</div>
+          </div>`;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="header"><h2>📋 記帳明細</h2><p>共 ${expenses.length} 筆，總計 $${total}</p></div>
+        <div class="section" style="padding-bottom:4px">${rows}</div>
+        <div style="height:24px"></div>`;
     }
 
     function getTotalAmount() {
