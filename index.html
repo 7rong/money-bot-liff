@@ -75,7 +75,11 @@
       const p = new URLSearchParams(location.search);
       params = { actId: p.get('actId'), groupId: p.get('groupId'), amount: p.get('amount'), item: p.get('item'), mode: p.get('mode') };
 
-      if (params.mode === 'records') {
+      if (params.mode === 'settlement') {
+        const res = await fetch(`${GAS_URL}?action=getSettlement&actId=${params.actId}`);
+        const data = await res.json();
+        renderSettlement(data.result || [], data.expenses || []);
+      } else if (params.mode === 'records') {
         const res = await fetch(`${GAS_URL}?action=getExpenses&actId=${params.actId}`);
         const data = await res.json();
         renderRecords(data.expenses || []);
@@ -120,6 +124,37 @@
       document.getElementById('app').innerHTML = `
         <div class="header"><h2>📋 記帳明細</h2><p>共 ${expenses.length} 筆，總計 $${total}</p></div>
         <div class="section" style="padding-bottom:4px">${rows}</div>
+        <div style="height:24px"></div>`;
+    }
+
+    function renderSettlement(result, expenses) {
+      const settlementHtml = result.length === 0
+        ? `<div style="padding:16px 0;text-align:center;color:#27ae60;font-weight:600">🎉 大家都平了！</div>`
+        : result.map(r => `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:15px;color:#333">${r}</div>`).join('');
+
+      const total = expenses.reduce((s, e) => s + e.amount, 0);
+      const expRows = expenses.map(e => {
+        const splitterText = e.splitters.some(s => s.includes(':'))
+          ? e.splitters.map(s => { const [n, a] = s.split(':'); return `${n} $${a}`; }).join('、')
+          : e.splitters.join('、');
+        return `
+          <div style="padding:12px 0;border-bottom:1px solid #f0f0f0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:15px;font-weight:600;color:#333">${e.item}</span>
+              <span style="font-size:16px;font-weight:700;color:#4C9BE8">$${e.amount}</span>
+            </div>
+            <div style="font-size:13px;color:#888">墊付：${e.payer}　分攤：${splitterText}</div>
+            <div style="font-size:12px;color:#bbb;margin-top:2px">${e.date}</div>
+          </div>`;
+      }).join('');
+
+      document.getElementById('app').innerHTML = `
+        <div class="header"><h2>💰 結算結果</h2><p>共 ${expenses.length} 筆，總計 $${total}</p></div>
+        <div class="section">${settlementHtml}</div>
+        <div class="section" style="padding-bottom:4px">
+          <h3>記帳明細</h3>
+          ${expRows}
+        </div>
         <div style="height:24px"></div>`;
     }
 
@@ -188,6 +223,7 @@
 
     async function deleteRecord(rowIndex) {
       if (!confirm('確定要刪除這筆記帳嗎？')) return;
+      document.getElementById('app').innerHTML = `<div class="loading">刪除中...</div>`;
       await fetch(`${GAS_URL}?action=deleteExpense&rowIndex=${rowIndex}`);
       const res = await fetch(`${GAS_URL}?action=getExpenses&actId=${params.actId}`);
       expenses = (await res.json()).expenses || [];
