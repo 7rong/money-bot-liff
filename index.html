@@ -250,12 +250,12 @@
       const total = getTotalAmount();
       if (!total || selectedSplitters.size === 0) return;
       const count = selectedSplitters.size;
-      const base = Math.floor(total / count * 10) / 10;
+      const share = Math.round(total / count * 10) / 10;
       const splitters = Array.from(selectedSplitters);
       splitters.forEach((name, i) => {
         const amt = i === count - 1
-          ? Math.round((total - base * (count - 1)) * 10) / 10
-          : base;
+          ? Math.round((total - share * (count - 1)) * 10) / 10
+          : share;
         splitConfig[name] = amt;
         const el = document.getElementById('amt-' + name);
         if (el) { el.value = amt; el.className = 'alloc-input filled'; }
