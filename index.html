@@ -246,16 +246,23 @@
       return allFilled && Math.abs(getAllocated() - total) < 0.1;
     }
 
+    function clearAlloc() {
+      Array.from(selectedSplitters).forEach(name => {
+        splitConfig[name] = 0;
+        const el = document.getElementById('amt-' + name);
+        if (el) { el.value = ''; el.className = 'alloc-input'; }
+      });
+      updateAllocDisplay();
+    }
+
     function autoEqual() {
       const total = getTotalAmount();
       if (!total || selectedSplitters.size === 0) return;
       const count = selectedSplitters.size;
-      const share = Math.round(total / count * 10) / 10;
+      const share = Math.round(total / count * 100) / 100;
       const splitters = Array.from(selectedSplitters);
-      splitters.forEach((name, i) => {
-        const amt = i === count - 1
-          ? Math.round((total - share * (count - 1)) * 10) / 10
-          : share;
+      splitters.forEach((name) => {
+        const amt = share;
         splitConfig[name] = amt;
         const el = document.getElementById('amt-' + name);
         if (el) { el.value = amt; el.className = 'alloc-input filled'; }
@@ -323,6 +330,7 @@
           <div class="alloc-header">
             <span class="alloc-total err" id="alloc-total">0 / ${params.amount || '?'} 元</span>
             <button class="avg-btn" onclick="autoEqual()">平均分配</button>
+            <button class="avg-btn" onclick="clearAlloc()">全部清除</button>
           </div>
           ${Array.from(selectedSplitters).map(name => `
           <div class="alloc-row">
